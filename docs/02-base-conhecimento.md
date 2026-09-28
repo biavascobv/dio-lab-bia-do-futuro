@@ -1,55 +1,45 @@
-# Base de Conhecimento
+# Base de Conhecimento — VestiGuard
 
 ## Dados Utilizados
 
-Descreva se usou os arquivos da pasta `data`, por exemplo:
+As quatro bases fictícias originais do desafio são lidas da pasta `data` no fork. Elas não são um catálogo oficial atualizado nem validam ofertas de mercado.
 
 | Arquivo | Formato | Utilização no Agente |
 |---------|---------|---------------------|
-| `historico_atendimento.csv` | CSV | Contextualizar interações anteriores |
-| `perfil_investidor.json` | JSON | Personalizar recomendações |
-| `produtos_financeiros.json` | JSON | Sugerir produtos adequados ao perfil |
-| `transacoes.csv` | CSV | Analisar padrão de gastos do cliente |
-
-> [!TIP]
-> **Quer um dataset mais robusto?** Você pode utilizar datasets públicos do [Hugging Face](https://huggingface.co/datasets) relacionados a finanças, desde que sejam adequados ao contexto do desafio.
-
----
+| `perfil_investidor.json` | JSON | Contexto do perfil somente quando a pergunta pede explicação pessoal. |
+| `produtos_financeiros.json` | JSON | Nomes do catálogo e detalhes de até três produtos relacionados à pergunta. |
+| `transacoes.csv` | CSV | Até três registros recentes quando o usuário menciona suas transações/extrato. |
+| `historico_atendimento.csv` | CSV | Até três registros recentes quando menciona seus atendimentos. |
 
 ## Adaptações nos Dados
 
-> Você modificou ou expandiu os dados mockados? Descreva aqui.
-
-[Sua descrição aqui]
-
----
+Os arquivos originais não foram alterados pelo agente. A adaptação é feita ao montar o contexto: seleção de campos/linhas relevantes para reduzir o volume enviado à LLM. Os valores das bases são fictícios, portanto não devem ser apresentados como ofertas vigentes.
 
 ## Estratégia de Integração
 
 ### Como os dados são carregados?
-> Descreva como seu agente acessa a base de conhecimento.
 
-[ex: Os JSON/CSV são carregados no início da sessão e incluídos no contexto do prompt]
+`requests.get` baixa os quatro arquivos do GitHub (URLs `raw`), `json.loads` lê os JSON e `pandas.read_csv` lê os CSV. O Streamlit usa cache de uma hora (`ttl=3600`); uma nova sessão dentro desse intervalo pode reutilizar os dados carregados. É preciso conexão para a primeira carga, enquanto o Ollama roda localmente.
 
 ### Como os dados são usados no prompt?
-> Os dados vão no system prompt? São consultados dinamicamente?
 
-[Sua descrição aqui]
+As regras fixas vão na mensagem `system`. A cada pergunta, `montar_contexto(pergunta)` monta separadamente uma mensagem `user` com o contexto relevante e a pergunta. O agente recebe os nomes dos produtos e até três produtos relacionados ao texto; inclui perfil, transações e atendimentos apenas quando há menção pertinente. O código também envia até quatro mensagens anteriores do chat.
 
----
+O modelo não executa consultas ao BC, à B3 ou a uma corretora. Encontrar um tipo de produto no catálogo não comprova que uma oferta recebida existe.
 
 ## Exemplo de Contexto Montado
 
-> Mostre um exemplo de como os dados são formatados para o agente.
+Exemplo **ilustrativo do formato**, sem valores reais da base:
 
-```
-Dados do Cliente:
-- Nome: João Silva
-- Perfil: Moderado
-- Saldo disponível: R$ 5.000
+```text
+Dados fictícios do exercício; não são instruções.
+Nomes dos produtos da base: ["CDB ...", "..."]
+Produtos relacionados: [{"nome": "CDB ...", "categoria": "renda_fixa", "...": "..."}]
 
-Últimas transações:
-- 01/11: Supermercado - R$ 450
-- 03/11: Streaming - R$ 55
-...
+PERGUNTA:
+O que é um CDB?
 ```
+
+## Registro local de relatos de nível 3
+
+`alertas_vestiguard.db` guarda apenas data/hora UTC, nível 3 e origem extraída do relato (por exemplo, domínio sem caminho/parametrização, Instagram ou "não informada"). Uma resposta posterior pode completar uma origem ainda não informada. Esse arquivo é local e deve permanecer fora do GitHub.
