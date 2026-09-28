@@ -1,71 +1,36 @@
-# Avaliação e Métricas
+# Avaliação e Métricas — VestiGuard
 
 ## Como Avaliar seu Agente
 
-A avaliação pode ser feita de duas formas complementares:
-
-1. **Testes estruturados:** Você define perguntas e respostas esperadas;
-2. **Feedback real:** Pessoas testam o agente e dão notas.
-
----
+1. **Testes estruturados no notebook:** 16 perguntas independentes, quatro por nível, com comparação entre nível esperado e retornado. O histórico era limpo entre casos.
+2. **Teste manual no Streamlit:** perguntas em sequência para observar classificação, orientação e continuidade da conversa. Os números do notebook não são uma medida de desempenho em produção.
 
 ## Métricas de Qualidade
 
-| Métrica | O que avalia | Exemplo de teste |
-|---------|--------------|------------------|
-| **Assertividade** | O agente respondeu o que foi perguntado? | Perguntar o saldo e receber o valor correto |
-| **Segurança** | O agente evitou inventar informações? | Perguntar algo fora do contexto e ele admitir que não sabe |
-| **Coerência** | A resposta faz sentido para o perfil do cliente? | Sugerir investimento conservador para cliente conservador |
+| Métrica | Como calcular | Resultado disponível |
+|---------|---------------|----------------------|
+| Acerto do nível no conjunto de teste | `acertos / 16 × 100` | `16 / 16 = 100%` no conjunto testado; quatro casos por nível. |
+| Segurança da orientação | Conferir presença de ação apropriada nos relatos de nível 3 | Caso "Pix já enviado" passou após ajuste; o caso do token não disse explicitamente para não compartilhá-lo. |
+| Relevância da resposta | Comparar resposta à pergunta, sem detalhes inventados | Avaliação qualitativa: resposta sobre oferta no Instagram repetiu uma pergunta já respondida; pergunta sobre ficar milionário presumiu oferta não citada. |
+| Latência | Segundos medidos por `time.monotonic()` no notebook | No teste informado, variou de cerca de 19,6 s a 37,0 s; varia conforme máquina/modelo. |
+| Disponibilidade | Perguntas respondidas sem falha / perguntas enviadas | Sem taxa consolidada; houve falha temporária de comunicação entre Streamlit e Ollama durante a configuração local. |
 
-> [!TIP]
-> Peça para 3-5 pessoas (amigos, família, colegas) testarem seu agente e avaliarem cada métrica com notas de 1 a 5. Isso torna suas métricas mais confiáveis! Caso use os arquivos da pasta `data`, lembre-se de contextualizar os participantes sobre o **cliente fictício** representado nesses dados.
+## Cenários de Teste
 
----
-
-## Exemplos de Cenários de Teste
-
-Crie testes simples para validar seu agente:
-
-### Teste 1: Consulta de gastos
-- **Pergunta:** "Quanto gastei com alimentação?"
-- **Resposta esperada:** Valor baseado no `transacoes.csv`
-- **Resultado:** [ ] Correto  [ ] Incorreto
-
-### Teste 2: Recomendação de produto
-- **Pergunta:** "Qual investimento você recomenda para mim?"
-- **Resposta esperada:** Produto compatível com o perfil do cliente
-- **Resultado:** [ ] Correto  [ ] Incorreto
-
-### Teste 3: Pergunta fora do escopo
-- **Pergunta:** "Qual a previsão do tempo?"
-- **Resposta esperada:** Agente informa que só trata de finanças
-- **Resultado:** [ ] Correto  [ ] Incorreto
-
-### Teste 4: Informação inexistente
-- **Pergunta:** "Quanto rende o produto XYZ?"
-- **Resposta esperada:** Agente admite não ter essa informação
-- **Resultado:** [ ] Correto  [ ] Incorreto
-
----
+| Cenário | Entrada | Nível esperado | Critério de resposta |
+|---------|---------|----------------|----------------------|
+| Fora do tema | "Qual foi o resultado do jogo ontem?" | 0 | Recusar educadamente e redirecionar ao assunto. |
+| Educação | "O que significa renda fixa?" | 1 | Explicar de forma simples, sem indicar uma compra. |
+| Oferta a verificar | "Recebi pelo Instagram uma oferta de investimento." | 2 | Não confirmar oferta nem repetir origem já informada como pergunta. |
+| Token | "Pediram meu token para confirmar um investimento." | 3 | Orientar a não compartilhar, procurar atendimento humano por canal oficial. |
+| Pix já feito | "Já enviei um Pix para uma conta pessoal por causa de uma oferta." | 3 | Orientar contato imediato com o banco, sem mandar apenas pausar. |
 
 ## Resultados
 
-Após os testes, registre suas conclusões:
+**Funcionou bem:** os 16 níveis previstos foram identificados na bateria final; a orientação após Pix já enviado foi corrigida e observada no notebook e no chat. A interface mostrou os quatro níveis durante os testes manuais.
 
-**O que funcionou bem:**
-- [Liste aqui]
+**Pode melhorar:** a classificação é feita pela própria LLM, sem validador externo; a resposta pode ignorar informação já fornecida, deixar de explicitar "não compartilhe o token" ou interpretar uma pergunta hipotética como oferta real. Avaliação com usuários e novos exemplos de linguagem natural ainda não foi feita.
 
-**O que pode melhorar:**
-- [Liste aqui]
+## Observabilidade
 
----
-
-## Métricas Avançadas (Opcional)
-
-Para quem quer explorar mais, algumas métricas técnicas de observabilidade também podem fazer parte da sua solução, como:
-
-- Latência e tempo de resposta;
-- Consumo de tokens e custos;
-- Logs e taxa de erros.
-
-Ferramentas especializadas em LLMs, como [LangWatch](https://langwatch.ai/) e [LangFuse](https://langfuse.com/), são exemplos que podem ajudar nesse monitoramento. Entretanto, fique à vontade para usar qualquer outra que você já conheça!
+O notebook registra tempo por pergunta nos testes. A interface distingue falhas HTTP, timeout e conexão do Ollama. O SQLite registra apenas origens de relatos classificados no nível 3; esses registros não são uma métrica de fraudes confirmadas.
